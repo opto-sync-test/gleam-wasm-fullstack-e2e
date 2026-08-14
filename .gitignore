@@ -1,0 +1,5 @@
+/server/build/
+/web/build/
+erl_crash.dump
+*.log
+

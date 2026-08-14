@@ -1,0 +1,61 @@
+name: Gleam WASM Full-stack E2E
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  beam-and-browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          submodules: recursive
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124
+        with:
+          otp-version: "28.1"
+          gleam-version: "1.17.0"
+          rebar3-version: "3"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22"
+
+      - name: Build and test JavaScript-targeted Gleam
+        working-directory: web
+        run: |
+          gleam format --check src test
+          gleam build --target javascript
+          gleam test --target javascript
+          node --check public/service-worker.js
+          node --check public/worker-bootstrap.mjs
+          node --test test/wasm-integration.test.mjs
+
+      - name: Build and test BEAM server with official client
+        working-directory: server
+        run: |
+          gleam format --check src test
+          gleam build
+          gleam test
+
+      - name: Exercise server, generated Gleam modules, WASM, and sync lanes
+        working-directory: server
+        run: |
+          set -euo pipefail
+          gleam run > /tmp/opto-sync-gleam-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:4000/ | grep -q 'Gleam + WebAssembly'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4000/service-worker.js | grep -q 'Promise.allSettled'
+          curl -fsS http://127.0.0.1:4000/gleam/opto_sync_gleam_web/worker.mjs | grep -q 'encode_retry_snapshot'
+          curl -fsS http://127.0.0.1:4000/wasm/index.mjs | grep -q 'initSyncer'
+          curl -fsS -X POST http://127.0.0.1:4000/api/sync/upload | grep -q '"accepted":true'
+          curl -fsS -X POST http://127.0.0.1:4000/api/sync/realtime | grep -q '"accepted":true'
+
