@@ -3,3 +3,7 @@
 erl_crash.dump
 *.log
 
+
+# Local temporary directories and repository-owned worktrees
+tmp/
+temp/
