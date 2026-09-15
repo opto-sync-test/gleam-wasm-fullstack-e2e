@@ -3,6 +3,11 @@
 erl_crash.dump
 *.log
 
+# Repository-local temporary data and authorized Git worktrees
+tmp
+temp
+tmp/worktrees
+temp/worktrees
 
 # Local temporary directories and repository-owned worktrees
 tmp/
