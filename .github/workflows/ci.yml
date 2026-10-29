@@ -10,9 +10,11 @@ permissions:
 jobs:
   beam-and-browser:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
+          persist-credentials: false
           submodules: recursive
       - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124
         with:
